@@ -28,7 +28,7 @@ class SteamAccountBot:
 
     def check_user(self, update: Update):
         user_id = update.message.from_user.id if update.message else update.callback_query.from_user.id
-        if user_id not in self.allowed_users:
+        if str(user_id) not in self.allowed_users:
             update.message.reply_text("Permission Denied")
             return False
         return True
