@@ -17,6 +17,8 @@ class SteamAccount(Base):
     shared_secret = Column(String, nullable=False)
     refresh_token = Column(String, nullable=False)
     access_token = Column(String, nullable=True)
+    identity_secret = Column(String)
+    device_id = Column(String)
 
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)

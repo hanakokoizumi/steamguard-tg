@@ -57,3 +57,59 @@ def refresh_access_token(steamid, refresh_token):
 
 class AccessTokenExpired(Exception):
     pass
+
+def get_steam_server_time():
+    resp = requests.post('https://api.steampowered.com/ITwoFactorService/QueryTime/v1').json()
+    return int(resp['response']['server_time'])
+
+def build_time_bytes(time: int) -> bytes:
+    return time.to_bytes(8, byteorder='big')
+
+
+def generate_confirmation_hash_for_time(time: int, tag: str, identity_secret: str) -> str:
+    secret_bytes = base64.b64decode(identity_secret)
+
+    mac = hmac.new(secret_bytes, digestmod=hashlib.sha1)
+
+    mac.update(build_time_bytes(time))
+    mac.update(tag.encode('utf-8'))
+
+    hash_bytes = mac.digest()
+
+    return base64.b64encode(hash_bytes).decode('utf-8')
+
+def get_confirmation_list(steamid, identity_secret, access_token, device_id):
+    server_time = get_steam_server_time()
+    resp = requests.get('https://steamcommunity.com/mobileconf/getlist', params={
+        'p': device_id,
+        'a': steamid,
+        'k': generate_confirmation_hash_for_time(server_time, 'conf', identity_secret),
+        't': server_time,
+        'm': 'react',
+        'tag': 'conf'
+    }, headers={
+        'Cookie': f'dob=;steamLoginSecure={steamid}||{access_token};steamid={steamid}'
+    }).json()
+    if 'needauth' in resp and not resp['needauth']:
+        raise AccessTokenExpired()
+    return resp['conf']
+
+def confirm_action(steamid, identity_secret, access_token, device_id, confirm_id, confirm_nonce, is_allow):
+    server_time = get_steam_server_time()
+    resp = requests.post('https://steamcommunity.com/mobileconf/multiajaxop', data={
+        'p': device_id,
+        'a': steamid,
+        'k': generate_confirmation_hash_for_time(server_time, 'conf', identity_secret),
+        't': server_time,
+        'm': 'react',
+        'tag': 'conf',
+        'op': 'allow' if is_allow else 'cancel',
+        'cid[]': confirm_id,
+        'ck[]': confirm_nonce
+    }, headers={
+        'Cookie': f'dob=;steamLoginSecure={steamid}||{access_token};steamid={steamid}',
+        'content-type': 'application/x-www-form-urlencoded'
+    }).json()
+    if 'needauth' in resp and not resp['needauth']:
+        raise AccessTokenExpired()
+    return resp['success']
