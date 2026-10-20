@@ -44,6 +44,7 @@ async def bot(tmp_path):
     bot = SteamAccountBot("123456789:fake_test_token", {42, 43}, sessions, steam)
     yield bot
     await bot.application.bot.request.shutdown()
+    await bot.polling_request.shutdown()
     await bot.application.bot.shutdown()
 
 

@@ -20,7 +20,18 @@ class UserUpdateProcessor(BaseUpdateProcessor):
 
     async def do_process_update(self, update, coroutine):
         user = getattr(update, "effective_user", None)
-        lock = self.user_locks.get(user.id if user else None, self.unknown_user_lock)
+        chat = getattr(update, "effective_chat", None)
+        if (
+            user is None
+            or user.id not in self.user_locks
+            or chat is None
+            or chat.type != "private"
+        ):
+            # Reject before Application creates per-user context or makes Telegram replies.
+            if inspect.iscoroutine(coroutine):
+                coroutine.close()
+            return
+        lock = self.user_locks[user.id]
         try:
             async with lock:
                 await coroutine

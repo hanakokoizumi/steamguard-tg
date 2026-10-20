@@ -4,6 +4,8 @@ import base64
 import binascii
 import hashlib
 import hmac
+import json
+import math
 import re
 import struct
 import time
@@ -30,6 +32,52 @@ class SteamError(RuntimeError):
 
 class AccessTokenExpired(SteamError):
     pass
+
+
+class InvalidMobileToken(SteamError):
+    pass
+
+
+def validate_login_token(token, steamid, refresh):
+    """Check claims, then rely on Steam over TLS for authentication, not this decode."""
+    try:
+        if (
+            not isinstance(token, str)
+            or len(token) > 16384
+            or not re.fullmatch(
+                r"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", token
+            )
+        ):
+            raise ValueError
+        payload = json.loads(base64.urlsafe_b64decode(token.split(".")[1] + "==="))
+        audience = payload.get("aud", [])
+        expiry = payload.get("exp")
+        if (
+            payload.get("sub") != str(steamid)
+            or not isinstance(audience, list)
+            or "mobile" not in audience
+            or ("derive" in audience) != refresh
+            or type(expiry) not in (int, float)
+            or not math.isfinite(expiry)
+        ):
+            raise ValueError
+        if expiry <= time.time():
+            raise AccessTokenExpired(
+                "Steam 登录凭据已过期，原有凭据未更新，请用 /login 重新登录。"
+            )
+        return token
+    except (
+        ValueError,
+        TypeError,
+        KeyError,
+        binascii.Error,
+        UnicodeError,
+        AttributeError,
+        RecursionError,
+    ):
+        raise InvalidMobileToken(
+            "令牌与当前账号或移动端类型不匹配，原有凭据未更新。请用 /login 重新登录，或提供该账号的移动端 Refresh Token。"
+        ) from None
 
 
 def decode_secret(value):
@@ -156,6 +204,7 @@ class SteamClient:
         return payload
 
     async def refresh_access_token(self, steamid, refresh_token):
+        validate_login_token(refresh_token, steamid, True)
         message = CAuthentication_AccessToken_GenerateForApp_Request(
             steamid=int(steamid),
             refresh_token=refresh_token,
@@ -165,9 +214,9 @@ class SteamClient:
         token = payload.get("access_token")
         if not isinstance(token, str) or not token:
             raise AccessTokenExpired(
-                "Refresh Token 无效或已过期，请用 /updatetoken 更新。"
+                "Refresh Token 无效或已过期，请用 /login 重新登录。"
             )
-        return token
+        return validate_login_token(token, steamid, False)
 
     async def qr_info(self, access_token, qr_url):
         _, client_id = parse_qr_url(qr_url)

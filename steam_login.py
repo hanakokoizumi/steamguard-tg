@@ -2,10 +2,8 @@
 
 import base64
 import binascii
-import json
 import math
 import re
-import time
 
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
@@ -17,6 +15,7 @@ from protobufs.steam_auth_pb2 import (
     CAuthentication_UpdateAuthSessionWithSteamGuardCode_Request,
 )
 from utils import API, MOBILE_HEADERS, AccessTokenExpired, SteamError
+from utils import validate_login_token as validate_login_token
 
 
 class LoginError(SteamError):
@@ -42,41 +41,6 @@ class LoginError(SteamError):
     @property
     def code_retryable(self):
         return self.result in ("65", "71", "88")
-
-
-def validate_login_token(token, steamid, refresh):
-    try:
-        if (
-            not isinstance(token, str)
-            or len(token) > 16384
-            or len(token.split(".")) != 3
-        ):
-            raise ValueError
-        payload = json.loads(base64.urlsafe_b64decode(token.split(".")[1] + "==="))
-        audience = payload.get("aud", [])
-        expiry = payload.get("exp")
-        if (
-            payload.get("sub") != str(steamid)
-            or not isinstance(audience, list)
-            or "mobile" not in audience
-            or ("derive" in audience) != refresh
-            or not isinstance(expiry, (int, float))
-            or not math.isfinite(expiry)
-            or expiry <= time.time()
-        ):
-            raise ValueError
-        return token
-    except (
-        ValueError,
-        TypeError,
-        KeyError,
-        binascii.Error,
-        UnicodeError,
-        AttributeError,
-    ):
-        raise SteamError(
-            "Steam 返回的令牌与当前账号或移动端类型不匹配，原有凭据未更新。"
-        ) from None
 
 
 class MobileLogin:

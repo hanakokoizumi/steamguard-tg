@@ -7,6 +7,7 @@ from urllib.parse import parse_qs
 import httpx
 import pytest
 from pyotp.contrib.steam import Steam
+from test_login_api import token
 
 from protobufs.steam_auth_pb2 import (
     CAuthentication_AccessToken_GenerateForApp_Request,
@@ -84,16 +85,16 @@ async def test_refresh_uses_current_proto_and_no_renewal():
             multipart_payload(request)
         )
         assert msg.steamid == int(STEAMID)
-        assert msg.refresh_token == "refresh-secret"
+        assert msg.refresh_token == token()
         assert msg.renewal_type == 0
         return httpx.Response(
             200,
             headers={"x-eresult": "1"},
-            json={"response": {"access_token": "new-token"}},
+            json={"response": {"access_token": token(refresh=False)}},
         )
 
     steam = client(handler)
-    assert await steam.refresh_access_token(STEAMID, "refresh-secret") == "new-token"
+    assert await steam.refresh_access_token(STEAMID, token()) == token(refresh=False)
     await steam.close()
 
 
@@ -192,7 +193,7 @@ async def test_api_errors_do_not_leak_credentials(result, exception):
         )
     )
     with pytest.raises(exception) as error:
-        await steam.refresh_access_token(STEAMID, "sensitive")
+        await steam.refresh_access_token(STEAMID, token())
     assert "sensitive" not in str(error.value)
     await steam.close()
 
@@ -213,6 +214,6 @@ async def test_network_failure_has_safe_error():
 
     steam = client(handler)
     with pytest.raises(SteamError) as error:
-        await steam.refresh_access_token(STEAMID, "sensitive-token")
+        await steam.refresh_access_token(STEAMID, token())
     assert "sensitive-token" not in str(error.value)
     await steam.close()

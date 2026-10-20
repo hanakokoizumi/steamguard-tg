@@ -44,6 +44,7 @@ class LoginFlow:
 
     async def begin_account_login(self, update, context, account):
         context.user_data.pop("expired_login", None)
+        context.user_data.pop("expired_input", None)
         flow = {
             "kind": "login",
             "stage": "username",
@@ -83,12 +84,11 @@ class LoginFlow:
             )
             await self.respond(
                 update,
-                "请发送 Steam 密码。收到后会立即尝试删除消息，密码只用于这次登录，不写入数据库。\nTelegram 机器人私聊不是端到端加密。",
+                "请发送 Steam 密码（包括开头的 / 和空格）。收到后会立即尝试删除消息，密码只用于这次登录，不写入数据库。\n退出请点“取消登录”或发送 /cancel。\nTelegram 机器人私聊不是端到端加密。",
                 self.login_buttons(context, flow),
             )
             return
-        # Delete passwords and codes before contacting Steam, including invalid input.
-        await self.remove_sensitive_message(update.effective_message)
+        # The authorized input wrapper deletes passwords/codes before rate limiting.
         if stage == "password":
             if not text or len(text.encode("utf-8")) > 256:
                 await self.respond(update, "密码不能为空或超过 256 字节，请重新输入。")
@@ -284,6 +284,7 @@ class LoginFlow:
         ):
             return
         if not self.login_active(data, flow):
+            data["expired_login"] = time.monotonic() + 600
             data.pop("flow", None)
             await context.bot.send_message(
                 context.job.chat_id,

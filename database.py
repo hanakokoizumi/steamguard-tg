@@ -20,14 +20,14 @@ class CredentialError(RuntimeError):
 class EncryptedString(TypeDecorator):
     impl = String
     cache_ok = True
-    cipher = None
 
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
-        if self.cipher is None:
+        cipher = getattr(dialect, "_credential_cipher", None)
+        if cipher is None:
             raise CredentialError("数据库加密尚未初始化。")
-        return PREFIX + self.cipher.encrypt(value.encode()).decode()
+        return PREFIX + cipher.encrypt(value.encode()).decode()
 
     def process_result_value(self, value, dialect):
         if value is None:
@@ -35,7 +35,9 @@ class EncryptedString(TypeDecorator):
         if not value.startswith(PREFIX):
             raise CredentialError("数据库仍有未迁移的凭据，请先运行初始化。")
         try:
-            return self.cipher.decrypt(value[len(PREFIX) :].encode()).decode()
+            return dialect._credential_cipher.decrypt(
+                value[len(PREFIX) :].encode()
+            ).decode()
         except (InvalidToken, AttributeError, UnicodeError):
             raise CredentialError("无法解密凭据，请检查原有 ENCRYPTION_KEY。") from None
 
@@ -57,17 +59,19 @@ class SteamAccount(Base):
 def initialize_database(path=None, key=None):
     path = Path(path or os.environ.get("DATABASE_PATH", "data/steam_accounts.db"))
     try:
-        EncryptedString.cipher = Fernet(key or os.environ["ENCRYPTION_KEY"])
+        cipher = Fernet(key or os.environ["ENCRYPTION_KEY"])
     except (KeyError, ValueError, TypeError):
         raise CredentialError(
             "请设置有效的 Fernet ENCRYPTION_KEY，并妥善备份。"
         ) from None
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     engine = create_engine(
         "sqlite:///" + str(path.resolve()),
         connect_args={"timeout": 15},
         hide_parameters=True,
     )
+    # Each engine owns its key. Opening another database must not change this one's key.
+    engine.dialect._credential_cipher = cipher
 
     @event.listens_for(engine, "connect")
     def configure_sqlite(connection, _):
@@ -87,15 +91,13 @@ def initialize_database(path=None, key=None):
                     continue
                 if value.startswith(PREFIX):
                     try:
-                        EncryptedString.cipher.decrypt(value[len(PREFIX) :].encode())
+                        cipher.decrypt(value[len(PREFIX) :].encode())
                     except InvalidToken:
                         raise CredentialError(
                             "ENCRYPTION_KEY 与数据库不匹配，未修改数据。"
                         ) from None
                 else:
-                    changes[field] = (
-                        PREFIX + EncryptedString.cipher.encrypt(value.encode()).decode()
-                    )
+                    changes[field] = PREFIX + cipher.encrypt(value.encode()).decode()
             if changes:
                 assignments = ", ".join(f"{field} = :{field}" for field in changes)
                 connection.execute(
