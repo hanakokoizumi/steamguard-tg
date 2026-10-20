@@ -33,6 +33,7 @@ from telegram.ext import (
 from database import CredentialError, SteamAccount, initialize_database
 from login_flow import LoginFlow
 from steam_login import MobileLogin
+from update_processor import UserUpdateProcessor
 from utils import (
     AccessTokenExpired,
     SteamClient,
@@ -179,7 +180,7 @@ class SteamAccountBot(LoginFlow):
         self.application = (
             ApplicationBuilder()
             .token(token)
-            .concurrent_updates(False)
+            .concurrent_updates(UserUpdateProcessor(self.allowed_users))
             .post_init(self.post_init)
             .post_shutdown(self.post_shutdown)
             .build()

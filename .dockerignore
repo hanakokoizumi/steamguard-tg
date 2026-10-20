@@ -7,6 +7,7 @@
 !utils.py
 !steam_login.py
 !login_flow.py
+!update_processor.py
 !healthcheck.py
 !protobufs/
 !protobufs/__init__.py
