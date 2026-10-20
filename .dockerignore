@@ -1,0 +1,11 @@
+**
+!Dockerfile
+!pyproject.toml
+!uv.lock
+!main.py
+!database.py
+!utils.py
+!healthcheck.py
+!protobufs/
+!protobufs/__init__.py
+!protobufs/steam_auth_pb2.py

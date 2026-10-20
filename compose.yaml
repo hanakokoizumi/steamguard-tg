@@ -1,0 +1,30 @@
+services:
+  bot:
+    build: .
+    image: steamguard-tg:local
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    environment:
+      DATABASE_PATH: /app/data/steam_accounts.db
+      HEALTHCHECK_PATH: /tmp/steamguard-tg.health
+    volumes:
+      - ./data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    healthcheck:
+      test: [CMD, /app/.venv/bin/python, healthcheck.py]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "3"

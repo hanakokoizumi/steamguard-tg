@@ -1,0 +1,30 @@
+syntax = "proto2";
+package steamguard;
+// Wire-compatible subset of SteamDatabase/Protobufs, steam/steammessages_auth.steamclient.proto.
+// Source revision: 89b77382edac5f747bfc196c2edf8996a7fe92bc (checked 2026-10-20).
+
+enum ESessionPersistence {
+  Invalid = -1;
+  Ephemeral = 0;
+  Persistent = 1;
+}
+enum ETokenRenewalType {
+  None = 0;
+  Allow = 1;
+}
+message CAuthentication_AccessToken_GenerateForApp_Request {
+  optional string refresh_token = 1;
+  optional fixed64 steamid = 2;
+  optional ETokenRenewalType renewal_type = 3 [default = None];
+}
+message CAuthentication_GetAuthSessionInfo_Request {
+  optional uint64 client_id = 1;
+}
+message CAuthentication_UpdateAuthSessionWithMobileConfirmation_Request {
+  optional int32 version = 1;
+  optional uint64 client_id = 2;
+  optional fixed64 steamid = 3;
+  optional bytes signature = 4;
+  optional bool confirm = 5 [default = false];
+  optional ESessionPersistence persistence = 6 [default = Persistent];
+}
