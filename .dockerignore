@@ -5,6 +5,8 @@
 !main.py
 !database.py
 !utils.py
+!steam_login.py
+!login_flow.py
 !healthcheck.py
 !protobufs/
 !protobufs/__init__.py

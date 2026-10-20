@@ -31,6 +31,8 @@ from telegram.ext import (
 )
 
 from database import CredentialError, SteamAccount, initialize_database
+from login_flow import LoginFlow
+from steam_login import MobileLogin
 from utils import (
     AccessTokenExpired,
     SteamClient,
@@ -67,6 +69,7 @@ COMMANDS = [
     ("confirm", "处理交易和市场确认"),
     ("list", "查看账号"),
     ("addaccount", "添加账号"),
+    ("login", "用户名密码登录 Steam"),
     ("updatetoken", "更新登录凭据"),
     ("deleteaccount", "删除账号"),
     ("cancel", "取消当前操作"),
@@ -93,6 +96,16 @@ def authorized(handler):
         if await self.check_user(update):
             self.prune(context.user_data)
             return await handler(self, update, context)
+        if (
+            handler.__name__ == "handle_account_input"
+            and update.effective_user
+            and update.effective_user.id in self.allowed_users
+            and update.effective_chat
+            and update.effective_chat.type == "private"
+            and context.user_data.get("flow", {}).get("kind") == "login"
+            and context.user_data["flow"].get("stage") != "username"
+        ):
+            await self.remove_sensitive_message(update.effective_message)
 
     return wrapper
 
@@ -152,13 +165,16 @@ def decode_qr(data):
         raise ValueError("图片无法读取或尺寸过大，请裁剪到二维码后重新发送。") from None
 
 
-class SteamAccountBot:
+class SteamAccountBot(LoginFlow):
     def __init__(self, token, allowed_users, session_factory, steam=None):
         self.allowed_users = {int(user) for user in allowed_users}
         if not self.allowed_users:
             raise ValueError("ALLOWED_USERS 不能为空。")
         self.sessions = session_factory
         self.steam = steam or SteamClient()
+        self.mobile_login = MobileLogin(self.steam)
+        self.login_attempts = {}
+        self.login_locks = {}
         self.request_limits = {}
         self.application = (
             ApplicationBuilder()
@@ -179,6 +195,7 @@ class SteamAccountBot:
             "list": self.list_accounts,
             "cancel": self.cancel_command,
             "updatetoken": self.update_token,
+            "login": self.login_command,
         }
         for command, handler in routes.items():
             self.application.add_handler(CommandHandler(command, handler))
@@ -212,8 +229,21 @@ class SteamAccountBot:
         )
 
     async def maintenance(self, context):
-        for data in self.application.user_data.values():
+        for user_id, data in list(self.application.user_data.items()):
+            flow = data.get("flow", {})
+            expired_login = (
+                flow.get("kind") == "login" and flow["expires"] <= time.monotonic()
+            )
             self.prune(data)
+            if expired_login:
+                try:
+                    await context.bot.send_message(
+                        user_id,
+                        "Steam 登录已超时，请用 /login 重新开始。",
+                        protect_content=True,
+                    )
+                except TelegramError:
+                    pass
         try:
             await context.bot.get_me()
             with self.sessions() as session:
@@ -229,7 +259,11 @@ class SteamAccountBot:
     def prune(data):
         now = time.monotonic()
         if data.get("flow", {}).get("expires", now + 1) <= now:
+            if data["flow"].get("kind") == "login":
+                data["expired_login"] = now + TTL
             data.pop("flow", None)
+        if data.get("expired_login", now + 1) <= now:
+            data.pop("expired_login", None)
         pending = data.setdefault("pending", {})
         for key in list(pending):
             if pending[key]["expires"] <= now:
@@ -305,14 +339,17 @@ class SteamAccountBot:
         await self.respond(
             update,
             "Steam Guard\n\n/code（或 /2fa）· 获取验证码\n/confirm · 交易和市场确认\n/list · 查看账号\n"
-            "/addaccount · 添加账号\n/updatetoken · 更新 Refresh Token\n/deleteaccount · 删除账号\n/cancel · 取消操作\n\n"
+            "/addaccount · 添加账号\n/login · 用用户名、密码和验证码登录\n/updatetoken · 粘贴 Refresh Token\n/deleteaccount · 删除账号\n/cancel · 取消操作\n\n"
             "发送 Steam 登录二维码图片，选择账号并确认后登录。\n也可以直接发送含完整凭据的 .maFile 文件导入账号。",
             [
                 [
                     self.button(context, "获取验证码", "choose", kind="code"),
                     self.button(context, "待确认请求", "choose", kind="confirm"),
                 ],
-                [self.button(context, "我的账号", "choose", kind="list")],
+                [
+                    self.button(context, "我的账号", "choose", kind="list"),
+                    self.button(context, "登录 Steam", "choose", kind="login"),
+                ],
             ],
         )
 
@@ -364,6 +401,7 @@ class SteamAccountBot:
             "confirm": "选择账号查看待确认请求",
             "delete": "选择要删除的账号",
             "token": "选择要更新登录凭据的账号",
+            "login": "选择要重新登录的账号",
             "qr": "选择登录账号；下一步需要确认",
             "list": f"我的账号 · 共 {len(accounts)} 个（点击获取验证码）",
         }
@@ -392,6 +430,11 @@ class SteamAccountBot:
     async def update_token(self, update, context):
         context.user_data.pop("flow", None)
         await self.choose_accounts(update, context, "token")
+
+    @authorized
+    async def login_command(self, update, context):
+        context.user_data.pop("flow", None)
+        await self.choose_accounts(update, context, "login")
 
     @authorized
     async def list_accounts(self, update, context):
@@ -446,9 +489,16 @@ class SteamAccountBot:
     async def handle_account_input(self, update, context):
         flow = context.user_data.get("flow")
         if not flow:
+            if context.user_data.get("expired_login"):
+                await self.remove_sensitive_message(update.effective_message)
+                await self.respond(update, "登录流程已过期，请用 /login 重新开始。")
+                return
             await self.respond(
-                update, "使用 /addaccount 添加账号，或 /start 打开菜单。"
+                update, "使用 /login 登录已添加的账号，或 /start 打开菜单。"
             )
+            return
+        if flow["kind"] == "login":
+            await self.handle_login_input(update, context, flow)
             return
         field = "refresh_token" if flow["kind"] == "token" else FIELDS[flow["step"]]
         try:
@@ -746,6 +796,12 @@ class SteamAccountBot:
                     session.commit()
                     context.user_data.clear()
                     await self.respond(update, "账号已删除。")
+                elif action == "login":
+                    await self.begin_account_login(update, context, account)
+                elif action == "login_auto":
+                    await self.automatic_login_code(
+                        update, context, account, payload.get("flow_id")
+                    )
                 elif action == "token":
                     context.user_data["flow"] = {
                         "kind": "token",
@@ -754,7 +810,7 @@ class SteamAccountBot:
                     }
                     await self.respond(
                         update,
-                        f"请发送 {account.steam_name} 的新移动端 Refresh Token。可用 /cancel 取消。",
+                        f"请发送 {account.steam_name} 的新移动端 Refresh Token。\n也可以用 /login 通过用户名、密码和验证码登录。可用 /cancel 取消。",
                     )
                 elif action == "qr":
                     # Fetch request metadata before the user approves this login.
@@ -810,7 +866,7 @@ class SteamAccountBot:
             except AccessTokenExpired:
                 await self.respond(
                     update,
-                    "Steam 登录凭据已失效，请用 /updatetoken 更新移动端 Refresh Token。",
+                    "Steam 登录凭据已失效，请用 /login 重新登录，或用 /updatetoken 更新移动端 Refresh Token。",
                 )
             except (SteamError, ValueError) as error:
                 await self.respond(

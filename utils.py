@@ -18,6 +18,10 @@ from protobufs.steam_auth_pb2 import (
 
 API = "https://api.steampowered.com"
 COMMUNITY = "https://steamcommunity.com/mobileconf"
+MOBILE_HEADERS = {
+    "User-Agent": "okhttp/4.9.2",
+    "Cookie": "mobileClient=android; mobileClientVersion=777777 3.10.3",
+}
 
 
 class SteamError(RuntimeError):
@@ -129,6 +133,7 @@ class SteamClient:
             "POST",
             f"{API}/IAuthenticationService/{method}/v1/",
             params=params,
+            headers=MOBILE_HEADERS,
             files={
                 "input_protobuf_encoded": (
                     None,

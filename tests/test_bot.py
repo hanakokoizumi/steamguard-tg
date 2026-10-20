@@ -153,6 +153,7 @@ async def test_duplicate_account_not_added(bot):
         "list_accounts",
         "update_token",
         "delete_account",
+        "login_command",
     ],
 )
 async def test_all_commands_require_whitelist(bot, method):

@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libzbar0 \
     && mkdir -p /app/data && chown bot:bot /app/data
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project && rm -rf /root/.cache/uv
-COPY main.py database.py utils.py healthcheck.py ./
+COPY main.py database.py utils.py steam_login.py login_flow.py healthcheck.py ./
 COPY protobufs/steam_auth_pb2.py protobufs/__init__.py ./protobufs/
 USER bot
 CMD ["/app/.venv/bin/python", "main.py"]

@@ -48,6 +48,7 @@ docker compose logs --tail 50 bot
 | `/confirm` | 查看待确认请求，逐项同意或拒绝 |
 | `/list` | 查看账号 |
 | `/addaccount` | 按提示添加账号 |
+| `/login` | 用用户名、密码和验证码重新登录已添加的账号 |
 | `/updatetoken` | 更新账号的移动端 Refresh Token |
 | `/deleteaccount` | 选择账号，再次确认后删除 |
 | `/cancel` | 取消输入，并使之前的操作按钮失效 |
@@ -58,7 +59,11 @@ docker compose logs --tail 50 bot
 
 验证码显示生成时的剩余有效时间。输入流程和操作按钮 10 分钟后过期；重启后需要重新发送命令。
 
-Refresh Token 失效时，用 `/updatetoken` 更新即可。失效令牌无法通过刷新接口续期，需要从已登录的 Steam 移动端认证器重新取得。获取验证码不依赖登录令牌。
+Refresh Token 失效时，使用 `/login`，选择账号后依次输入 Steam 登录用户名、密码和验证码。也可点击“使用已保存密钥验证”，由机器人生成验证码。成功后会核对 SteamID，更新加密保存的令牌。无需先在手机登录或手动复制 Token；若 Steam 仅允许设备确认，机器人会明确提示。
+
+密码只用于当前登录请求，收到的密码和验证码消息会立即尝试删除。验证码可重试 5 次，登录会话 3 分钟后过期；`/cancel` 会取消当前流程。每个用户 10 分钟内最多提交 5 次用户名密码登录。登录期间不会修改原有凭据，成功后才一起更新两个 Token。
+
+已有有效移动端 Refresh Token 时，也可用 `/updatetoken` 粘贴更新。获取验证码不依赖登录令牌。
 
 ## 数据和备份
 
@@ -72,7 +77,9 @@ Secret 和 Token 使用 Fernet 加密，密钥保存在 `.env`。账号名称、
 
 ## 接口与开发
 
-认证使用 `IAuthenticationService` 的 `GenerateAccessTokenForApp/v1`、`GetAuthSessionInfo/v1`、`UpdateAuthSessionWithMobileConfirmation/v1`；时间同步使用 `ITwoFactorService/QueryTime/v1`。交易和市场确认使用 Steam 移动端的 `mobileconf/getlist`、`mobileconf/multiajaxop`，签名标签分别为 `list`、`accept`、`reject`。
+密码登录使用 `IAuthenticationService` 的 `GetPasswordRSAPublicKey/v1`、`BeginAuthSessionViaCredentials/v1`、`UpdateAuthSessionWithSteamGuardCode/v1`、`PollAuthSessionStatus/v1`，请求的会话类型为 `MobileApp`，密码按 Steam 返回的 RSA 公钥加密。
+
+令牌刷新和扫码批准使用 `GenerateAccessTokenForApp/v1`、`GetAuthSessionInfo/v1`、`UpdateAuthSessionWithMobileConfirmation/v1`；时间同步使用 `ITwoFactorService/QueryTime/v1`。交易和市场确认使用 Steam 移动端的 `mobileconf/getlist`、`mobileconf/multiajaxop`，签名标签分别为 `list`、`accept`、`reject`。
 
 协议字段于 2026-10-20 对照 [SteamDatabase/Protobufs](https://github.com/SteamDatabase/Protobufs/blob/89b77382edac5f747bfc196c2edf8996a7fe92bc/steam/steammessages_auth.steamclient.proto) 和 [Steam 在线接口列表](https://api.steampowered.com/ISteamWebAPIUtil/GetSupportedAPIList/v1/)核对。使用到的字段保存在 `protobufs/steam_auth.proto`；这些移动端接口没有完整的公开稳定性保证。
 

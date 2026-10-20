@@ -24,21 +24,31 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1aprotobufs/steam_auth.proto\x12\nsteamguard\"\x97\x01\n2CAuthentication_AccessToken_GenerateForApp_Request\x12\x15\n\rrefresh_token\x18\x01 \x01(\t\x12\x0f\n\x07steamid\x18\x02 \x01(\x06\x12\x39\n\x0crenewal_type\x18\x03 \x01(\x0e\x32\x1d.steamguard.ETokenRenewalType:\x04None\"?\n*CAuthentication_GetAuthSessionInfo_Request\x12\x11\n\tclient_id\x18\x01 \x01(\x04\"\xe3\x01\n?CAuthentication_UpdateAuthSessionWithMobileConfirmation_Request\x12\x0f\n\x07version\x18\x01 \x01(\x05\x12\x11\n\tclient_id\x18\x02 \x01(\x04\x12\x0f\n\x07steamid\x18\x03 \x01(\x06\x12\x11\n\tsignature\x18\x04 \x01(\x0c\x12\x16\n\x07\x63onfirm\x18\x05 \x01(\x08:\x05\x66\x61lse\x12@\n\x0bpersistence\x18\x06 \x01(\x0e\x32\x1f.steamguard.ESessionPersistence:\nPersistent*J\n\x13\x45SessionPersistence\x12\x14\n\x07Invalid\x10\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01\x12\r\n\tEphemeral\x10\x00\x12\x0e\n\nPersistent\x10\x01*(\n\x11\x45TokenRenewalType\x12\x08\n\x04None\x10\x00\x12\t\n\x05\x41llow\x10\x01')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1aprotobufs/steam_auth.proto\x12\nsteamguard\"\x97\x01\n2CAuthentication_AccessToken_GenerateForApp_Request\x12\x15\n\rrefresh_token\x18\x01 \x01(\t\x12\x0f\n\x07steamid\x18\x02 \x01(\x06\x12\x39\n\x0crenewal_type\x18\x03 \x01(\x0e\x32\x1d.steamguard.ETokenRenewalType:\x04None\"?\n*CAuthentication_GetAuthSessionInfo_Request\x12\x11\n\tclient_id\x18\x01 \x01(\x04\"\xe3\x01\n?CAuthentication_UpdateAuthSessionWithMobileConfirmation_Request\x12\x0f\n\x07version\x18\x01 \x01(\x05\x12\x11\n\tclient_id\x18\x02 \x01(\x04\x12\x0f\n\x07steamid\x18\x03 \x01(\x06\x12\x11\n\tsignature\x18\x04 \x01(\x0c\x12\x16\n\x07\x63onfirm\x18\x05 \x01(\x08:\x05\x66\x61lse\x12@\n\x0bpersistence\x18\x06 \x01(\x0e\x32\x1f.steamguard.ESessionPersistence:\nPersistent\"\xbd\x01\n\x1d\x43\x41uthentication_DeviceDetails\x12\x1c\n\x14\x64\x65vice_friendly_name\x18\x01 \x01(\t\x12\x15\n\rplatform_type\x18\x02 \x01(\x05\x12\x0f\n\x07os_type\x18\x03 \x01(\x05\x12\x1a\n\x12gaming_device_type\x18\x04 \x01(\r\x12\x14\n\x0c\x63lient_count\x18\x05 \x01(\r\x12\x12\n\nmachine_id\x18\x06 \x01(\x0c\x12\x10\n\x08\x61pp_type\x18\x07 \x01(\x05\"G\n/CAuthentication_GetPasswordRSAPublicKey_Request\x12\x14\n\x0c\x61\x63\x63ount_name\x18\x01 \x01(\t\"\xb3\x03\n6CAuthentication_BeginAuthSessionViaCredentials_Request\x12\x1c\n\x14\x64\x65vice_friendly_name\x18\x01 \x01(\t\x12\x14\n\x0c\x61\x63\x63ount_name\x18\x02 \x01(\t\x12\x1a\n\x12\x65ncrypted_password\x18\x03 \x01(\t\x12\x1c\n\x14\x65ncryption_timestamp\x18\x04 \x01(\x04\x12\x16\n\x0eremember_login\x18\x05 \x01(\x08\x12\x15\n\rplatform_type\x18\x06 \x01(\x05\x12@\n\x0bpersistence\x18\x07 \x01(\x0e\x32\x1f.steamguard.ESessionPersistence:\nPersistent\x12\x1b\n\nwebsite_id\x18\x08 \x01(\t:\x07Unknown\x12\x41\n\x0e\x64\x65vice_details\x18\t \x01(\x0b\x32).steamguard.CAuthentication_DeviceDetails\x12\x12\n\nguard_data\x18\n \x01(\t\x12\x10\n\x08language\x18\x0b \x01(\r\x12\x14\n\tqos_level\x18\x0c \x01(\x05:\x01\x32\"\x82\x01\n;CAuthentication_UpdateAuthSessionWithSteamGuardCode_Request\x12\x11\n\tclient_id\x18\x01 \x01(\x04\x12\x0f\n\x07steamid\x18\x02 \x01(\x06\x12\x0c\n\x04\x63ode\x18\x03 \x01(\t\x12\x11\n\tcode_type\x18\x04 \x01(\x05\"o\n-CAuthentication_PollAuthSessionStatus_Request\x12\x11\n\tclient_id\x18\x01 \x01(\x04\x12\x12\n\nrequest_id\x18\x02 \x01(\x0c\x12\x17\n\x0ftoken_to_revoke\x18\x03 \x01(\x06*J\n\x13\x45SessionPersistence\x12\x14\n\x07Invalid\x10\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01\x12\r\n\tEphemeral\x10\x00\x12\x0e\n\nPersistent\x10\x01*(\n\x11\x45TokenRenewalType\x12\x08\n\x04None\x10\x00\x12\t\n\x05\x41llow\x10\x01')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'protobufs.steam_auth_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_ESESSIONPERSISTENCE']._serialized_start=491
-  _globals['_ESESSIONPERSISTENCE']._serialized_end=565
-  _globals['_ETOKENRENEWALTYPE']._serialized_start=567
-  _globals['_ETOKENRENEWALTYPE']._serialized_end=607
+  _globals['_ESESSIONPERSISTENCE']._serialized_start=1440
+  _globals['_ESESSIONPERSISTENCE']._serialized_end=1514
+  _globals['_ETOKENRENEWALTYPE']._serialized_start=1516
+  _globals['_ETOKENRENEWALTYPE']._serialized_end=1556
   _globals['_CAUTHENTICATION_ACCESSTOKEN_GENERATEFORAPP_REQUEST']._serialized_start=43
   _globals['_CAUTHENTICATION_ACCESSTOKEN_GENERATEFORAPP_REQUEST']._serialized_end=194
   _globals['_CAUTHENTICATION_GETAUTHSESSIONINFO_REQUEST']._serialized_start=196
   _globals['_CAUTHENTICATION_GETAUTHSESSIONINFO_REQUEST']._serialized_end=259
   _globals['_CAUTHENTICATION_UPDATEAUTHSESSIONWITHMOBILECONFIRMATION_REQUEST']._serialized_start=262
   _globals['_CAUTHENTICATION_UPDATEAUTHSESSIONWITHMOBILECONFIRMATION_REQUEST']._serialized_end=489
+  _globals['_CAUTHENTICATION_DEVICEDETAILS']._serialized_start=492
+  _globals['_CAUTHENTICATION_DEVICEDETAILS']._serialized_end=681
+  _globals['_CAUTHENTICATION_GETPASSWORDRSAPUBLICKEY_REQUEST']._serialized_start=683
+  _globals['_CAUTHENTICATION_GETPASSWORDRSAPUBLICKEY_REQUEST']._serialized_end=754
+  _globals['_CAUTHENTICATION_BEGINAUTHSESSIONVIACREDENTIALS_REQUEST']._serialized_start=757
+  _globals['_CAUTHENTICATION_BEGINAUTHSESSIONVIACREDENTIALS_REQUEST']._serialized_end=1192
+  _globals['_CAUTHENTICATION_UPDATEAUTHSESSIONWITHSTEAMGUARDCODE_REQUEST']._serialized_start=1195
+  _globals['_CAUTHENTICATION_UPDATEAUTHSESSIONWITHSTEAMGUARDCODE_REQUEST']._serialized_end=1325
+  _globals['_CAUTHENTICATION_POLLAUTHSESSIONSTATUS_REQUEST']._serialized_start=1327
+  _globals['_CAUTHENTICATION_POLLAUTHSESSIONSTATUS_REQUEST']._serialized_end=1438
 # @@protoc_insertion_point(module_scope)
